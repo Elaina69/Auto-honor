@@ -1,3 +1,11 @@
+/**
+ * @name Auto_Honor
+ * @author Elaina Da Catto
+ * @description Auto honor plugins for Pengu Loader
+ * @link https://github.com/Elaina69
+ * @Nyan Meow~~~
+ */
+
 import lang from "https://unpkg.com/elainav3-data@latest/data/configs/Language.js"
 
 if (!DataStore.has("Special-honor-player-name")) {
@@ -6,16 +14,15 @@ if (!DataStore.has("Special-honor-player-name")) {
 if (!DataStore.has("Special-honor-player-tag")) {
     DataStore.set("Special-honor-player-tag", "6969")
 }
+if (!DataStore.has("Auto-Honor")) {
+    DataStore.set("Auto-Honor", true)
+}
 
 let eConsole = "%c Elaina Da Catto - Auto Honor "
 let eCss = "color: #ffffff; background-color: #f77fbe"
 
 const list = {
-    "Honor-mode": [
-        "Random",
-        "Friends",
-        "Special player"
-    ],
+    "Honor-mode": ["Random","Friends","Special player"],
 }
 
 export function init(context) {
@@ -30,8 +37,12 @@ export function init(context) {
                 let lobby = await getLobbyList.json()
                 let currentSummoner = await fetch("/lol-summoner/v1/current-summoner")
                 let curent = await currentSummoner.json()
+                let getSpecialPlayer = await fetch(`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
+                let specialPlayerID = await getSpecialPlayer.json()
                 let lobbyArray = []
                 let i,honorID,honorName
+
+                DataStore.set("Special-honor-player", specialPlayerID["summonerId"])
                 
                 for (let [key, value] of Object.entries(lobby["players"])) {
                     if (lobby["players"][`${key}`]["summonerId"] != curent["summonerId"]){
@@ -39,23 +50,35 @@ export function init(context) {
                     }
                 }
 
-                if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Friends") {
-                    i = Math.floor(Math.random() * lobbyArray.length)
-                    honorID = lobbyArray[i]["summonerId"]
-                    honorName = lobbyArray[i]["displayName"]
-                    console.log(eConsole+"%c "+JSON.stringify(lobbyArray),eCss,"")
-                }
-                else if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Special player") {
-                    honorID = DataStore.get("Special-honor-player")
-                    honorName = 
-                    console.log(eConsole+"%c "+JSON.stringify(),eCss,"")
-                }
-                else {
+                function random() {
                     i = Math.floor(Math.random() * honorList["eligiblePlayers"].length)
                     honorID = honorList["eligiblePlayers"][i]["summonerId"]
                     honorName = honorList["eligiblePlayers"][i]["summonerName"]
-                    console.log(eConsole+"%c "+JSON.stringify(honorList["eligiblePlayers"]),eCss,"")
                 }
+                function friends() {
+                    i = Math.floor(Math.random() * lobbyArray.length)
+                    honorID = lobbyArray[i]["summonerId"]
+                    honorName = lobbyArray[i]["displayName"]
+                }
+                function specialPlayer(Name) {
+                    honorID = DataStore.get("Special-honor-player")
+                    honorName = Name
+                }
+
+                if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Friends") friends()
+                else if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Special player") {
+                    let a,Name
+                    for (let ii = 0; ii<lobbyArray.length; ii++) {
+                        if (lobbyArray[ii]["summonerId"]==DataStore.get("Special-honor-player")) {
+                            a = true
+                            Name = lobbyArray[ii]["displayName"]
+                        }
+                        else a = false
+                    }
+                    if (a) specialPlayer(Name)
+                    else friends()
+                }
+                else random()
 
                 await fetch('/lol-honor-v2/v1/honor-player', {
                     method: 'POST',
@@ -331,7 +354,7 @@ export function init(context) {
                     UI.Row("Info-div",[
                         UI.Link(
                             `Auto Honor - Elaina Da Catto`,
-                            'https://github.com/Elaina69/Elaina-V3'
+                            'https://github.com/Elaina69/Auto-honor'
                         ),
                     ]),
                 ]),
@@ -368,16 +391,26 @@ export function init(context) {
                     UI.Button(`${selectedLang["Check"]}`,"check-valid-name",
                     async ()=> {
                         let LCUfetch = await fetch(`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
+                        let id = await LCUfetch.json()
+                        let currentSummoner = await fetch("/lol-summoner/v1/current-summoner")
+                        let curent = await currentSummoner.json()
                         let info = document.getElementById("valid-name-checked")
-                        if (LCUfetch["status"]==200) {
-                            info.textContent = `${selectedLang["Valid-username"]}`
-                            console.log(eConsole+`${selectedLang["Valid-username"]}`)
-                            info.style.color = "green"
+
+                        function getValidName(text,colors) {
+                            info.textContent = text
+                            console.log(eConsole+`%c ${text}`,eCss,colors)
+                            info.style.cssText = colors
+                        }
+
+                        if (LCUfetch["status"]==200 && id["summonerId"]!=curent["summonerId"]) {
+                            getValidName(selectedLang["Valid-username"],"color: green;")
+                        }
+                        else if (LCUfetch["status"]==200 && id["summonerId"]==curent["summonerId"]) {
+                            let i = Math.floor(Math.random() * 2 + 1)
+                            getValidName(selectedLang[`Honor-self-${i}`],"color: red;")
                         }
                         else {
-                            info.textContent = `${selectedLang["Invalid-username"]}`
-                            console.log(`${selectedLang["Invalid-username"]}`)
-                            info.style.color = "red"
+                            getValidName(selectedLang["Invalid-username"],"color: red;")
                         }
                     },"display: flex; width: 75px; height: 30px; margin-top: 34px;")
                 ],"display: flex"),
@@ -405,7 +438,6 @@ export function init(context) {
                         const check = setInterval (()=>{
                             if (document.getElementById("Info")) {
                                 clearInterval(check)
-                                //tickcheck(DataStore.get(""), el, box)
                                 tickcheck(DataStore.get("Auto-Honor"), "autoHonor", "autoHonorbox")
                             }
                         },100)
