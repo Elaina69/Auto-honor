@@ -8,22 +8,27 @@
 
 import lang from "https://unpkg.com/elainav3-data@latest/data/configs/Language.js"
 
-if (!DataStore.has("Special-honor-player-name")) {
-    DataStore.set("Special-honor-player-name", "Elaina Da Catto")
-}
-if (!DataStore.has("Special-honor-player-tag")) {
-    DataStore.set("Special-honor-player-tag", "6969")
-}
-if (!DataStore.has("Auto-Honor")) {
-    DataStore.set("Auto-Honor", true)
-}
-
 let eConsole = "%c Elaina Da Catto - Auto Honor "
 let eCss = "color: #ffffff; background-color: #f77fbe"
 
 const list = {
     "Honor-mode": ["Random","Friends","Special player"],
 }
+
+function setDefaultData(defaults) {
+    Object.entries(defaults).forEach(([key, value]) => {
+        if (!DataStore.has(key)) {
+            DataStore.set(key, value);
+        }
+    });
+}
+
+setDefaultData({
+    "Special-honor-player-name" : "Elaina Da Catto",
+    "Special-honor-player-tag"  : "6969",
+    "Auto-Honor"                : true,
+    "Honor-mode"                : "Friends",
+})
 
 export function init(context) {
     //Auto honor
