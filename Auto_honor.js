@@ -23,6 +23,70 @@ function setDefaultData(defaults) {
     });
 }
 
+async function fetchData(lcu) {
+    let data = (await fetch(lcu)).json()
+    return data
+}
+
+async function autoHonor() {
+    let honorList = await fetchData('/lol-honor-v2/v1/ballot')
+    let lobby = await fetchData("/lol-lobby/v2/comms/members")
+    let currentSummoner = await fetchData("/lol-summoner/v1/current-summoner")
+    let specialPlayerID = await fetchData(`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
+    let lobbyArray = []
+    let i,honorID,honorName
+
+    DataStore.set("Special-honor-player", specialPlayerID["summonerId"])
+    
+    for (let [key, value] of Object.entries(lobby["players"])) {
+        if (lobby["players"][`${key}`]["summonerId"] != currentSummoner["summonerId"]){
+            lobbyArray.push(lobby["players"][`${key}`])
+        }
+    }
+
+    function random() {
+        i = Math.floor(Math.random() * honorList["eligiblePlayers"].length)
+        honorID = honorList["eligiblePlayers"][i]["summonerId"]
+        honorName = honorList["eligiblePlayers"][i]["summonerName"]
+    }
+    function friends() {
+        i = Math.floor(Math.random() * lobbyArray.length)
+        honorID = lobbyArray[i]["summonerId"]
+        honorName = lobbyArray[i]["displayName"]
+    }
+    function specialPlayer(Name) {
+        honorID = DataStore.get("Special-honor-player")
+        honorName = Name
+    }
+
+    if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Friends") friends()
+    else if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Special player") {
+        let a,Name
+        for (let ii = 0; ii<lobbyArray.length; ii++) {
+            if (lobbyArray[ii]["summonerId"]==DataStore.get("Special-honor-player")) {
+                a = true
+                Name = lobbyArray[ii]["displayName"]
+            }
+            else a = false
+        }
+        if (a) specialPlayer(Name)
+        else friends()
+    }
+    else random()
+
+    await fetch('/lol-honor-v2/v1/honor-player', {
+        method: 'POST',
+        body: JSON.stringify({
+            "gameId": honorList["gameId"],
+            "honorCategory": "HEART",
+            "summonerId": honorID
+        }),
+        headers: {'Content-Type': 'application/json'}
+    })
+    Toast.success(`Honored player: ${honorName}`)
+    console.log(eConsole+`%c Honored player: %c${honorName}`,eCss,"","color: #0070ff")
+}
+
 setDefaultData({
     "Special-honor-player-name" : "Elaina Da Catto",
     "Special-honor-player-tag"  : "6969",
@@ -35,68 +99,8 @@ export function init(context) {
     if (DataStore.get("Auto-Honor")) {
         context.socket.observe('/lol-gameflow/v1/gameflow-phase',async (data) => {
             console.log(data)
-            if(data["data"]=="PreEndOfGame") {
-                let LCUfetch = await fetch('/lol-honor-v2/v1/ballot')
-                let honorList = await LCUfetch.json()
-                let getLobbyList = await fetch("/lol-lobby/v2/comms/members")
-                let lobby = await getLobbyList.json()
-                let currentSummoner = await fetch("/lol-summoner/v1/current-summoner")
-                let curent = await currentSummoner.json()
-                let getSpecialPlayer = await fetch(`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
-                let specialPlayerID = await getSpecialPlayer.json()
-                let lobbyArray = []
-                let i,honorID,honorName
-
-                DataStore.set("Special-honor-player", specialPlayerID["summonerId"])
-                
-                for (let [key, value] of Object.entries(lobby["players"])) {
-                    if (lobby["players"][`${key}`]["summonerId"] != curent["summonerId"]){
-                        lobbyArray.push(lobby["players"][`${key}`])
-                    }
-                }
-
-                function random() {
-                    i = Math.floor(Math.random() * honorList["eligiblePlayers"].length)
-                    honorID = honorList["eligiblePlayers"][i]["summonerId"]
-                    honorName = honorList["eligiblePlayers"][i]["summonerName"]
-                }
-                function friends() {
-                    i = Math.floor(Math.random() * lobbyArray.length)
-                    honorID = lobbyArray[i]["summonerId"]
-                    honorName = lobbyArray[i]["displayName"]
-                }
-                function specialPlayer(Name) {
-                    honorID = DataStore.get("Special-honor-player")
-                    honorName = Name
-                }
-
-                if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Friends") friends()
-                else if (lobbyArray.length!=0 && DataStore.get("Honor-mode") == "Special player") {
-                    let a,Name
-                    for (let ii = 0; ii<lobbyArray.length; ii++) {
-                        if (lobbyArray[ii]["summonerId"]==DataStore.get("Special-honor-player")) {
-                            a = true
-                            Name = lobbyArray[ii]["displayName"]
-                        }
-                        else a = false
-                    }
-                    if (a) specialPlayer(Name)
-                    else friends()
-                }
-                else random()
-
-                await fetch('/lol-honor-v2/v1/honor-player', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        "gameId": honorList["gameId"],
-                        "honorCategory": "HEART",
-                        "summonerId": honorID
-                    }),
-                    headers: {'Content-Type': 'application/json'}
-                })
-                Toast.success(`Honored player: ${honorName}`)
-                console.log(eConsole+`%c Honored player: %c${honorName}`,eCss,"","color: #0070ff")
-            }
+            if (data["data"]=="PreEndOfGame") autoHonor()
+            else if (data["data"]=="None") {}
         })
     }
 
