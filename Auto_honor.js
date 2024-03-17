@@ -44,10 +44,13 @@ async function autoHonor() {
         }
     }
 
-    function random() {
+    async function random() {
         i = Math.floor(Math.random() * honorList["eligiblePlayers"].length)
         honorID = honorList["eligiblePlayers"][i]["summonerId"]
-        honorName = honorList["eligiblePlayers"][i]["summonerName"]
+
+        let a = await (await fetchData(`/lol-summoner/v1/summoners/${honorID}`))
+        honorName = a["gameName"]
+        console.log("random")
     }
     function friends() {
         i = Math.floor(Math.random() * lobbyArray.length)
@@ -83,8 +86,11 @@ async function autoHonor() {
         }),
         headers: {'Content-Type': 'application/json'}
     })
-    Toast.success(`Honored player: ${honorName}`)
-    console.log(eConsole+`%c Honored player: %c${honorName}`,eCss,"","color: #0070ff")
+    window.setTimeout(()=>{
+        Toast.success(`Honored player: ${honorName}`)
+        console.log(eConsole+`%c PlayerID: %c${honorID}`,eCss,"","color: #0070ff")
+        console.log(eConsole+`%c Honored player: %c${honorName}`,eCss,"","color: #0070ff")
+    },1000)
 }
 
 setDefaultData({
@@ -399,10 +405,9 @@ export function init(context) {
                     ]),
                     UI.Button(`${selectedLang["Check"]}`,"check-valid-name",
                     async ()=> {
-                        let LCUfetch = await fetch(`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
-                        let id = await LCUfetch.json()
-                        let currentSummoner = await fetch("/lol-summoner/v1/current-summoner")
-                        let curent = await currentSummoner.json()
+                        await fetchData (`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
+                        await fetchData("/lol-summoner/v1/current-summoner")
+                        
                         let info = document.getElementById("valid-name-checked")
 
                         function getValidName(text,colors) {
@@ -411,10 +416,10 @@ export function init(context) {
                             info.style.cssText = colors
                         }
 
-                        if (LCUfetch["status"]==200 && id["summonerId"]!=curent["summonerId"]) {
+                        if (id["summonerId"]!=curent["summonerId"]) {
                             getValidName(selectedLang["Valid-username"],"color: green;")
                         }
-                        else if (LCUfetch["status"]==200 && id["summonerId"]==curent["summonerId"]) {
+                        else if (id["summonerId"]==curent["summonerId"]) {
                             let i = Math.floor(Math.random() * 2 + 1)
                             getValidName(selectedLang[`Honor-self-${i}`],"color: red;")
                         }
