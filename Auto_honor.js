@@ -6,7 +6,8 @@
  * @Nyan Meow~~~
  */
 
-import lang from "https://unpkg.com/elainav3-data@latest/data/configs/Language.js"
+import "https://unpkg.com/elaina-theme-data@latest/data/Languages/Languages.js"
+import * as observer from "https://unpkg.com/elaina-theme-data@latest/data/Utilities/_observer.js"
 
 let eConsole = "%c Elaina Da Catto - Auto Honor "
 let eCss = "color: #ffffff; background-color: #f77fbe"
@@ -106,7 +107,16 @@ export function init(context) {
         context.socket.observe('/lol-gameflow/v1/gameflow-phase',async (data) => {
             console.log(data)
             if (data["data"]=="PreEndOfGame") autoHonor()
-            else if (data["data"]=="None") {}
+        })
+
+        //in case context.socket can't find preEndOFGame
+        observer.subscribeToElementCreation(".prompted-voting-player-container", (element) => {
+            window.setTimeout(() => {
+                if (element) {
+                    autoHonor()
+                    console.log(eConsole+`%c Can't find preEndOfGame`,eCss,"")
+                }
+            },1500)
         })
     }
 
@@ -339,11 +349,7 @@ export function init(context) {
         },
     }
 
-    const injectSettings = (panel) => {
-        const langCode = document.querySelector("html").lang;
-        const langMap = lang.langlist
-        const selectedLang = lang[langMap[langCode] || "EN"];
-
+    const injectSettings = async (panel) => {
         let interval = window.setInterval(()=> {
             try {
                 let a = document.getElementById("Special-honor-div")
@@ -374,7 +380,7 @@ export function init(context) {
                     ]),
                 ]),
                 UI.CheckBox(
-                    `${selectedLang["Auto-Honor"]}`,'autoHonor','autoHonorbox',
+                    `${await getString("Auto-Honor")}`,'autoHonor','autoHonorbox',
                     ()=>{
                         let autoHonorel = document.getElementById("autoHonor")
                         let autoHonorbox = document.getElementById("autoHonorbox")
@@ -392,18 +398,18 @@ export function init(context) {
                     },true
                 ),
                 document.createElement('br'),
-                UI.Dropdown(list, "Honor-mode", `${selectedLang["Honor-mode"]}`),
+                UI.Dropdown(list, "Honor-mode", `${await getString("Honor-mode")}`),
                 document.createElement('br'),
                 UI.Row("Special-honor-div",[
                     UI.Row("Special-honor-name-div",[
-                        UI.Label(`${selectedLang["Username"]}`),
+                        UI.Label(`${await getString("Username")}`),
                         UI.Input("Special-honor-player-name","width: 190px; margin-right: 15px;")
                     ]),
                     UI.Row("Special-honor-tagline-div",[
-                        UI.Label(`${selectedLang["Tagline"]}`),
+                        UI.Label(`${await getString("Tagline")}`),
                         UI.Input("Special-honor-player-tag","width: 80px; margin-right: 15px")
                     ]),
-                    UI.Button(`${selectedLang["Check"]}`,"check-valid-name",
+                    UI.Button(`${await getString("Check")}`,"check-valid-name",
                     async ()=> {
                         await fetchData (`/lol-summoner/v1/summoners?name=${DataStore.get("Special-honor-player-name")}%23${DataStore.get("Special-honor-player-tag")}`)
                         await fetchData("/lol-summoner/v1/current-summoner")
@@ -417,14 +423,14 @@ export function init(context) {
                         }
 
                         if (id["summonerId"]!=curent["summonerId"]) {
-                            getValidName(selectedLang["Valid-username"],"color: green;")
+                            getValidName(await getString("Valid-username"),"color: green;")
                         }
                         else if (id["summonerId"]==curent["summonerId"]) {
                             let i = Math.floor(Math.random() * 2 + 1)
-                            getValidName(selectedLang[`Honor-self-${i}`],"color: red;")
+                            getValidName(await getString(`Honor-self-${i}`),"color: red;")
                         }
                         else {
-                            getValidName(selectedLang["Invalid-username"],"color: red;")
+                            getValidName(await getString("Invalid-username"),"color: red;")
                         }
                     },"display: flex; width: 75px; height: 30px; margin-top: 34px;")
                 ],"display: flex"),
